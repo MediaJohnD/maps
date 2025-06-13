@@ -57,7 +57,7 @@ def load_data_files(paths: List[Path]) -> List[pd.DataFrame]:
 
 def aggregate_metrics(dfs: List[pd.DataFrame]) -> pd.DataFrame:
     """Aggregate spend/impressions/visits by ZIP and DMA."""
-    frames = []
+    frames: List[pd.DataFrame] = []
     for df in dfs:
         cols = {c.lower(): c for c in df.columns}
         zip_col = cols.get("destination_zip") or cols.get("zip") or cols.get("zipcode")
@@ -66,17 +66,30 @@ def aggregate_metrics(dfs: List[pd.DataFrame]) -> pd.DataFrame:
         imp_col = cols.get("impressions")
         visit_col = cols.get("visits")
         match_col = cols.get("num_buying_hhld_indvs") or cols.get("matched_visitors")
+
         if not zip_col and not dma_col:
             continue
+
         gcols = [c for c in [zip_col, dma_col] if c]
-        metrics = {c for c in [spend_col, imp_col, visit_col, match_col] if c}
-        agg = df[gcols + list(metrics)].groupby(gcols).sum(numeric_only=True).reset_index()
+        metrics = [c for c in [spend_col, imp_col, visit_col, match_col] if c]
+
+        subset = df[gcols + metrics]
+        subset = subset.dropna(subset=gcols, how="all")
+        gcols_valid = [c for c in gcols if not subset[c].isna().all()]
+        if not gcols_valid:
+            continue
+        agg = subset.groupby(gcols_valid).sum(numeric_only=True).reset_index()
         frames.append(agg)
+
     if not frames:
         raise ValueError("No usable data found in input files")
+
     merged = pd.concat(frames, axis=0, ignore_index=True)
     gcols = [c for c in ["destination_zip", "zip", "zipcode", "destination_dma", "dma"] if c in merged.columns]
-    out = merged.groupby(gcols).sum(numeric_only=True).reset_index()
+    merged = merged.dropna(subset=gcols, how="all")
+    gcols_valid = [c for c in gcols if not merged[c].isna().all()]
+    out = merged.groupby(gcols_valid).sum(numeric_only=True).reset_index()
+
     # Standardize column names
     rename_map = {
         "destination_zip": "ZIP",
@@ -242,8 +255,12 @@ def main() -> None:
             extracted = extract_zip(zip_path, tmpdir / Path(url).stem)
             frames = load_data_files(extracted)
             if frames:
-                agg = aggregate_metrics(frames)
-                all_frames.append(agg)
+                try:
+                    agg = aggregate_metrics(frames)
+                except ValueError:
+                    agg = pd.DataFrame()
+                if not agg.empty:
+                    all_frames.append(agg)
                 for df in frames:
                     flows.extend(prepare_flows(df))
         master = pd.concat(all_frames, axis=0, ignore_index=True)
