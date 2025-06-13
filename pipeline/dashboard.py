@@ -6,7 +6,7 @@ from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objects as go
 
-from .visualization import choropleth_heatmap, scatter_plot, bar_chart
+from .visualization import choropleth_heatmap, scatter_plot
 
 
 class ReportingDashboard:

@@ -78,7 +78,7 @@ def main():
     m = folium.Map(location=[merged.geometry.centroid.y.mean(),
                              merged.geometry.centroid.x.mean()], zoom_start=5)
 
-    choropleth = folium.Choropleth(
+    folium.Choropleth(
         geo_data=merged,
         data=merged,
         columns=[args.geometry_zip_field, args.spend_field],
