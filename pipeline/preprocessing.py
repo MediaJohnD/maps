@@ -4,6 +4,8 @@ from typing import List
 
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, RobustScaler, MinMaxScaler
+import sklearn
+from packaging import version
 
 
 def normalize_numeric(df: pd.DataFrame, columns: List[str], method: str = "robust") -> pd.DataFrame:
@@ -15,7 +17,10 @@ def normalize_numeric(df: pd.DataFrame, columns: List[str], method: str = "robus
 
 def encode_categorical_onehot(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
     """One-hot encode categorical columns, dropping the original columns."""
-    encoder = OneHotEncoder(sparse=False, handle_unknown="ignore")
+    if version.parse(sklearn.__version__) >= version.parse("1.2"):
+        encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
+    else:
+        encoder = OneHotEncoder(sparse=False, handle_unknown="ignore")
     encoded = encoder.fit_transform(df[columns])
     encoded_df = pd.DataFrame(encoded, columns=encoder.get_feature_names_out(columns), index=df.index)
     df = df.drop(columns=columns).join(encoded_df)
