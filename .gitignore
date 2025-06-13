@@ -1,3 +1,4 @@
 *.png
 *.html
 __pycache__/
+*.zip
