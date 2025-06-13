@@ -1,12 +1,11 @@
 """Machine learning models for anomaly detection and prediction."""
 
-from typing import Dict, List, Tuple
+from typing import List
 
 import pandas as pd
-from sklearn.decomposition import PCA
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from tensorflow import keras
 from tensorflow.keras import layers
