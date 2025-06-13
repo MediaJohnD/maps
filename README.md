@@ -23,6 +23,11 @@ archives are no longer included in the repository. Running
 embedded in the script. You can also fetch them manually from the project's
 GitHub release page if you prefer to run the examples offline.
 
+For quick testing of `choropleth_by_spend.py` without downloading large files,
+run `generate_sample_inputs.py` to create a tiny shapefile and matching CSV. The
+script outputs `sample_geometry.zip` and `sample_data.zip` in the current
+directory, which you can then pass to the heatmap script.
+
 ## Usage
 
 The `choropleth_by_spend.py` script expects two zip files. These can be local
@@ -47,6 +52,15 @@ python3 choropleth_by_spend.py \
   https://raw.githubusercontent.com/user/repo/main/geometry.zip \
   https://raw.githubusercontent.com/user/repo/main/data.zip \
   output.html
+```
+
+If you generated the small test inputs with `generate_sample_inputs.py`, invoke
+the script as follows:
+
+```bash
+python3 generate_sample_inputs.py
+python3 choropleth_by_spend.py sample_geometry.zip sample_data.zip output.html \
+    --geometry-zip-field ZCTA5CE10 --data-zip-field zip --spend-field spend
 ```
 
 The resulting `output.html` is an interactive choropleth showing spend by ZIP
