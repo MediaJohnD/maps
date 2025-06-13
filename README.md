@@ -1,13 +1,17 @@
 # maps
 
-This repository contains a simple script to build ZIP code choropleth maps.
+This repository provides tools for building geographic visualizations and a
+complete data pipeline for real-time client reporting.  It includes sample
+scripts for stand‑alone heatmaps as well as a modular pipeline supporting data
+ingestion, cleaning, modeling and interactive dashboards.
 
 ## Requirements
 
 Install the required Python packages:
 
 ```bash
-pip install geopandas matplotlib folium pandas
+pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
+    xgboost lightgbm catboost tensorflow
 ```
 
 ## Usage
@@ -51,3 +55,23 @@ python3 spending_heatmap.py spend_data.csv us_zips.shp --geo-key ZCTA5CE10 --dat
 The output `heatmap.png` includes a legend labelled "Total Spend ($)". Optional
 arguments allow specifying the key columns if they differ and overlaying state
 boundaries with `--states path/to/states.shp`.
+
+## Full data pipeline
+
+The `pipeline` package implements a modular system for ingesting heterogeneous
+data sources, cleaning and joining them by geography and time, running
+anomaly-detection models, training supervised classifiers and serving
+interactive Dash dashboards.
+
+Running the pipeline requires providing a list of data files, a ZIP-to-DMA
+mapping CSV and a shapefile for geographic boundaries:
+
+```bash
+python3 -m pipeline.main \
+  --data-sources spend.csv visits.csv \
+  --zip-dma-mapping zip_to_dma.csv \
+  --geo-shapefile us_zips.shp
+```
+
+This command launches a dashboard at `http://127.0.0.1:8050` with choropleth
+maps and scatter plots that update based on demographic filters.
