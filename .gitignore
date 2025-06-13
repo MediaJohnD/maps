@@ -2,3 +2,6 @@
 *.html
 __pycache__/
 *.zip
+
+data.csv
+zips.*
