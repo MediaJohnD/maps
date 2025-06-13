@@ -14,6 +14,15 @@ pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
     xgboost lightgbm catboost tensorflow
 ```
 
+### Sample ZIP archives
+
+The example scripts reference two small ZIP files—`Recovery_Results.zip` and
+`updated sheets and numbers May 19.zip`—which contain sample spreadsheets. These
+archives are no longer included in the repository. Running
+`client_spend_pipeline.py` will automatically download them from the URLs
+embedded in the script. You can also fetch them manually from the project's
+GitHub release page if you prefer to run the examples offline.
+
 ## Usage
 
 The `choropleth_by_spend.py` script expects two zip files. These can be local
