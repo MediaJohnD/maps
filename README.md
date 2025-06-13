@@ -75,3 +75,19 @@ python3 -m pipeline.main \
 
 This command launches a dashboard at `http://127.0.0.1:8050` with choropleth
 maps and scatter plots that update based on demographic filters.
+
+## Client spend pipeline
+
+`client_spend_pipeline.py` provides an end‑to‑end workflow that downloads the
+client spreadsheets, aggregates spending by ZIP code and DMA, and generates a
+self‑contained Mapbox HTML visualization. A Mapbox access token must be supplied
+via the `MAPBOX_TOKEN` environment variable.
+
+```bash
+MAPBOX_TOKEN=<your_token> python3 client_spend_pipeline.py --output-html client_map.html
+```
+
+The script uses default URLs for the two zip archives and the ZIP‑to‑coordinate
+CSV, so running the command above will create `client_map.html` with sample
+data. Pass `--zip1`, `--zip2` or `--zip-latlon` to override these sources with
+local paths or alternate links.
