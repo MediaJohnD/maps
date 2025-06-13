@@ -290,6 +290,7 @@ map.on('load', () => {
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Process client data and create Mapbox visualization")
+ codex/create-geospatial-data-pipeline-with-mapbox-visualization
     parser.add_argument(
         "--zip1",
         default="https://github.com/MediaJohnD/maps/raw/882266c266d0ca3fa73c5e167b02ec3e054c3b3c/Recovery_Results.zip",
@@ -310,6 +311,12 @@ def main() -> None:
         default="client_spend_map.html",
         help="Output HTML file",
     )
+
+    parser.add_argument("zip1", help="First zip file URL or local path")
+    parser.add_argument("zip2", help="Second zip file URL or local path")
+    parser.add_argument("zip_latlon", help="CSV mapping ZIP to latitude/longitude")
+    parser.add_argument("output_html", help="Output HTML file")
+ main
     args = parser.parse_args()
 
     token = os.getenv("MAPBOX_TOKEN")
