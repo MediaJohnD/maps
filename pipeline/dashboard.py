@@ -22,8 +22,11 @@ class ReportingDashboard:
 
     def _setup_layout(self):
         demographics = [c for c in self.df.columns if c.startswith("demo_")]
+        options = [{"label": d, "value": d} for d in demographics] if demographics else []
+        value = demographics[0] if demographics else None
+
         self.app.layout = html.Div([
-            dcc.Dropdown(id="demo-dropdown", options=[{"label": d, "value": d} for d in demographics], value=demographics[0]),
+            dcc.Dropdown(id="demo-dropdown", options=options, value=value),
             dcc.Graph(id="choropleth"),
             dcc.Graph(id="scatter"),
         ])
@@ -34,6 +37,9 @@ class ReportingDashboard:
             [Input("demo-dropdown", "value")],
         )
         def update_plots(demo_col):
+            if not demo_col:
+                return go.Figure(), go.Figure()
+
             fig_map = choropleth_heatmap(self.df, self.geo, demo_col, self.geo_key)
             fig_scatter = scatter_plot(self.df, "spend", demo_col)
             return fig_map, fig_scatter
