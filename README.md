@@ -11,7 +11,7 @@ Install the required Python packages:
 
 ```bash
 pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
-    xgboost lightgbm catboost tensorflow
+    xgboost tensorflow
 ```
 
 ### Sample ZIP archives

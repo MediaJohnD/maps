@@ -1,6 +1,5 @@
 """Entry point for the data pipeline and visualization suite."""
 
-from pathlib import Path
 from typing import List
 
 from sklearn.model_selection import train_test_split
@@ -17,8 +16,6 @@ from .modeling import (
     detect_anomalies_iforest,
     detect_anomalies_dbscan,
     train_xgboost,
-    train_lightgbm,
-    train_catboost,
     evaluate_classifier,
 )
 from .visualization import choropleth_heatmap

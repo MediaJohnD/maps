@@ -1,18 +1,15 @@
 """Machine learning models for anomaly detection and prediction."""
 
-from typing import Dict, List, Tuple
+from typing import List
 
 import pandas as pd
-from sklearn.decomposition import PCA
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from tensorflow import keras
 from tensorflow.keras import layers
 import xgboost as xgb
-import lightgbm as lgb
-import catboost as cb
 
 
 # ---------------------------------------------------------------------------
@@ -71,27 +68,6 @@ def train_xgboost(X: pd.DataFrame, y: pd.Series) -> xgb.XGBClassifier:
     grid = GridSearchCV(clf, params, cv=3, n_jobs=-1)
     grid.fit(X, y)
     return grid.best_estimator_
-
-
-def train_lightgbm(X: pd.DataFrame, y: pd.Series) -> lgb.LGBMClassifier:
-    """Train a LightGBM classifier with basic hyperparameter tuning."""
-    params = {
-        "num_leaves": [31, 63],
-        "n_estimators": [100, 200],
-        "learning_rate": [0.05, 0.1]
-    }
-    clf = lgb.LGBMClassifier()
-    grid = GridSearchCV(clf, params, cv=3, n_jobs=-1)
-    grid.fit(X, y)
-    return grid.best_estimator_
-
-
-def train_catboost(X: pd.DataFrame, y: pd.Series) -> cb.CatBoostClassifier:
-    """Train a CatBoost classifier with automatic categorical handling."""
-    clf = cb.CatBoostClassifier(verbose=0)
-    clf.fit(X, y)
-    return clf
-
 
 def evaluate_classifier(model, X_test: pd.DataFrame, y_test: pd.Series) -> str:
     """Return a classification report string."""
