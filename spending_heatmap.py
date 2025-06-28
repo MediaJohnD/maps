@@ -41,6 +41,10 @@ def main():
         else:
             raise ValueError('Specify --data-key; could not infer column name.')
 
+    # Ensure join columns are strings for a robust merge
+    geo[geo_key] = geo[geo_key].astype(str)
+    data[data_key] = data[data_key].astype(str)
+
     # Merge spending data with geographic boundaries
     merged = geo.merge(data[[data_key, args.spend_field]],
                        left_on=geo_key, right_on=data_key, how='left')
