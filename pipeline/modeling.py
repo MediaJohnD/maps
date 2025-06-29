@@ -18,6 +18,7 @@ import catboost as cb
 # Unsupervised models
 # ---------------------------------------------------------------------------
 
+
 def build_autoencoder(input_dim: int) -> keras.Model:
     """Create a simple dense autoencoder."""
     input_layer = keras.Input(shape=(input_dim,))
@@ -30,7 +31,9 @@ def build_autoencoder(input_dim: int) -> keras.Model:
     return autoencoder
 
 
-def detect_anomalies_autoencoder(df: pd.DataFrame, feature_cols: List[str]) -> pd.Series:
+def detect_anomalies_autoencoder(
+    df: pd.DataFrame, feature_cols: List[str]
+) -> pd.Series:
     """Fit an autoencoder and return anomaly scores."""
     X = df[feature_cols].values
     model = build_autoencoder(X.shape[1])
@@ -40,7 +43,9 @@ def detect_anomalies_autoencoder(df: pd.DataFrame, feature_cols: List[str]) -> p
     return pd.Series(mse, index=df.index, name="autoencoder_mse")
 
 
-def detect_anomalies_iforest(df: pd.DataFrame, feature_cols: List[str]) -> pd.Series:
+def detect_anomalies_iforest(
+    df: pd.DataFrame, feature_cols: List[str]
+) -> pd.Series:
     """Isolation Forest anomaly scores."""
     model = IsolationForest(contamination=0.01, random_state=42)
     model.fit(df[feature_cols])
@@ -48,7 +53,9 @@ def detect_anomalies_iforest(df: pd.DataFrame, feature_cols: List[str]) -> pd.Se
     return pd.Series(scores, index=df.index, name="iforest_score")
 
 
-def detect_anomalies_dbscan(df: pd.DataFrame, feature_cols: List[str]) -> pd.Series:
+def detect_anomalies_dbscan(
+    df: pd.DataFrame, feature_cols: List[str]
+) -> pd.Series:
     """DBSCAN labels where -1 indicates anomalies."""
     model = DBSCAN(eps=0.5, min_samples=5)
     labels = model.fit_predict(df[feature_cols])
@@ -59,12 +66,13 @@ def detect_anomalies_dbscan(df: pd.DataFrame, feature_cols: List[str]) -> pd.Ser
 # Supervised models
 # ---------------------------------------------------------------------------
 
+
 def train_xgboost(X: pd.DataFrame, y: pd.Series) -> xgb.XGBClassifier:
     """Train an XGBoost classifier with simple hyperparameter tuning."""
     params = {
         "max_depth": [3, 5, 7],
         "n_estimators": [100, 200],
-        "learning_rate": [0.05, 0.1]
+        "learning_rate": [0.05, 0.1],
     }
     clf = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss")
     grid = GridSearchCV(clf, params, cv=3, n_jobs=-1)
@@ -77,7 +85,7 @@ def train_lightgbm(X: pd.DataFrame, y: pd.Series) -> lgb.LGBMClassifier:
     params = {
         "num_leaves": [31, 63],
         "n_estimators": [100, 200],
-        "learning_rate": [0.05, 0.1]
+        "learning_rate": [0.05, 0.1],
     }
     clf = lgb.LGBMClassifier()
     grid = GridSearchCV(clf, params, cv=3, n_jobs=-1)

@@ -16,7 +16,9 @@ def choropleth_heatmap(
     output_html: Optional[str] = None,
 ) -> go.Figure:
     """Create a Plotly choropleth heatmap by ZIP code or DMA."""
-    merged = geo.merge(df[[geo_key, value_col]], left_on=geo_key, right_on=geo_key, how="left")
+    merged = geo.merge(
+        df[[geo_key, value_col]], left_on=geo_key, right_on=geo_key, how="left"
+    )
     fig = px.choropleth_mapbox(
         merged,
         geojson=merged.__geo_interface__,
@@ -24,7 +26,10 @@ def choropleth_heatmap(
         color=value_col,
         mapbox_style="carto-positron",
         zoom=3,
-        center={"lat": merged.geometry.centroid.y.mean(), "lon": merged.geometry.centroid.x.mean()},
+        center={
+            "lat": merged.geometry.centroid.y.mean(),
+            "lon": merged.geometry.centroid.x.mean(),
+        },
         opacity=0.6,
         hover_name=geo_key,
     )
