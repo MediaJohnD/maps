@@ -14,6 +14,27 @@ pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
     xgboost lightgbm catboost tensorflow
 ```
 
+### Installing geospatial dependencies
+
+`geopandas` and its underlying library `fiona` depend on native tools such as
+GDAL, GEOS and PROJ. These may need to be installed system wide before running
+`pip install` if you are not using Conda. On Debian/Ubuntu systems you can run:
+
+```bash
+sudo apt-get install gdal-bin libgdal-dev libproj-dev libgeos-dev
+pip install geopandas fiona
+```
+
+If you have Conda available, it can handle the compiled binaries for you:
+
+```bash
+conda install geopandas fiona
+```
+
+Several example scripts in this repository, such as
+`spending_heatmap.py` and `choropleth_by_spend.py`, require these geospatial
+libraries. They will fail to run until the dependencies above are installed.
+
 ### Sample ZIP archives
 
 The example scripts reference two small ZIP files—`Recovery_Results.zip` and
