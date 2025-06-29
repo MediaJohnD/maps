@@ -6,8 +6,10 @@ import argparse
 import json
 import os
 import re
+import shutil
 import tempfile
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, Iterable, List
 
@@ -34,16 +36,20 @@ def download_file(url_or_path: str) -> Path:
     return path
 
 
-def extract_zip(zip_path: Path) -> List[Path]:
-    """Extract a zip archive and return a list of extracted file paths."""
+@contextmanager
+def extract_zip(zip_path: Path) -> Iterable[Path]:
+    """Extract a zip archive and yield file paths, cleaning up afterward."""
     out_dir = Path(tempfile.mkdtemp())
-    with zipfile.ZipFile(zip_path) as z:
-        z.extractall(out_dir)
-    files: List[Path] = []
-    for root, _, fnames in os.walk(out_dir):
-        for fname in fnames:
-            files.append(Path(root) / fname)
-    return files
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            z.extractall(out_dir)
+        files: List[Path] = []
+        for root, _, fnames in os.walk(out_dir):
+            for fname in fnames:
+                files.append(Path(root) / fname)
+        yield files
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
 
 
 #######################################
@@ -367,9 +373,8 @@ def main() -> None:
     zip1 = download_file(args.zip1)
     zip2 = download_file(args.zip2)
 
-    files1 = extract_zip(zip1)
-    files2 = extract_zip(zip2)
-    datasets = load_spreadsheets(files1 + files2)
+    with extract_zip(zip1) as files1, extract_zip(zip2) as files2:
+        datasets = load_spreadsheets(files1 + files2)
 
     aggregated_parts = []
     flows_parts = []
