@@ -11,7 +11,15 @@ Install the required Python packages:
 
 ```bash
 pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
-    xgboost lightgbm catboost tensorflow
+    xgboost lightgbm catboost tensorflow pytest
+```
+
+### Running tests
+
+After installing the requirements, execute the unit tests with:
+
+```bash
+pytest
 ```
 
 ### Sample ZIP archives
