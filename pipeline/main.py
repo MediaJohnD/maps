@@ -41,7 +41,11 @@ def run_pipeline(
     spend_df = normalize_numeric(spend_df, numeric_cols)
 
     # Encode categorical features
-    cat_cols = [c for c in spend_df.columns if spend_df[c].dtype == object and c != "ZIP"]
+    cat_cols = [
+        c
+        for c in spend_df.columns
+        if spend_df[c].dtype == object and c != "ZIP"
+    ]
     spend_df = encode_categoricals(spend_df, cat_cols)
 
     # Bucket time monthly
@@ -62,7 +66,9 @@ def run_pipeline(
     master = merge_on_keys(dfs, ["ZIP", "DMA", "STATE", "period"])
 
     # Train unsupervised models
-    feature_cols = [c for c in master.columns if c not in {"ZIP", "DMA", "STATE", "period"}]
+    feature_cols = [
+        c for c in master.columns if c not in {"ZIP", "DMA", "STATE", "period"}
+    ]
     master["ae_mse"] = detect_anomalies_autoencoder(master, feature_cols)
     master["iforest"] = detect_anomalies_iforest(master, feature_cols)
     master["dbscan"] = detect_anomalies_dbscan(master, feature_cols)
@@ -71,13 +77,17 @@ def run_pipeline(
     if "target" in master.columns:
         X = master[feature_cols]
         y = master["target"]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
         model = train_xgboost(X_train, y_train)
         print(evaluate_classifier(model, X_test, y_test))
 
     # Visualization and dashboard
     geo = gpd.read_file(geo_shapefile)
-    choropleth_heatmap(master, geo, "spend", "ZIP", output_html="spend_map.html")
+    choropleth_heatmap(
+        master, geo, "spend", "ZIP", output_html="spend_map.html"
+    )
 
     app = ReportingDashboard(master, geo, "ZIP")
     app.run(debug=False)
@@ -91,8 +101,12 @@ if __name__ == "__main__":
         help="List of CSV or Excel files to ingest",
         required=True,
     )
-    parser.add_argument("--zip-dma-mapping", required=True, help="ZIP to DMA CSV")
-    parser.add_argument("--geo-shapefile", required=True, help="Geographic shapefile")
+    parser.add_argument(
+        "--zip-dma-mapping", required=True, help="ZIP to DMA CSV"
+    )
+    parser.add_argument(
+        "--geo-shapefile", required=True, help="Geographic shapefile"
+    )
     args = parser.parse_args()
 
     run_pipeline(args.data_sources, args.zip_dma_mapping, args.geo_shapefile)

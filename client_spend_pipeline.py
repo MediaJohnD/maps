@@ -19,6 +19,7 @@ import requests
 # File download and extraction
 ###############################
 
+
 def download_file(url_or_path: str) -> Path:
     """Download a file if `url_or_path` is a URL, otherwise return Path."""
     path = Path(url_or_path)
@@ -49,6 +50,7 @@ def extract_zip(zip_path: Path) -> List[Path]:
 # Data loading and basic preprocessing
 #######################################
 
+
 def load_spreadsheets(files: Iterable[Path]) -> Dict[str, pd.DataFrame]:
     """Load CSV/Excel files from a list of paths."""
     datasets: Dict[str, pd.DataFrame] = {}
@@ -75,7 +77,9 @@ def load_spreadsheets(files: Iterable[Path]) -> Dict[str, pd.DataFrame]:
     return datasets
 
 
-def normalize_numeric(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
+def normalize_numeric(
+    df: pd.DataFrame, columns: Iterable[str]
+) -> pd.DataFrame:
     """Apply min-max scaling to specified numeric columns."""
     for col in columns:
         if col in df.columns:
@@ -132,11 +136,15 @@ def aggregate_by_geo(df: pd.DataFrame) -> pd.DataFrame:
     if dma_col:
         group_cols.append(dma_col)
     aggregated = df.groupby(group_cols)[numeric_cols].sum().reset_index()
-    aggregated.rename(columns={zip_col: "ZIP", dma_col or "dma": "DMA"}, inplace=True)
+    aggregated.rename(
+        columns={zip_col: "ZIP", dma_col or "dma": "DMA"}, inplace=True
+    )
     return aggregated
 
 
-def build_flow_records(df: pd.DataFrame, zip_latlon: pd.DataFrame) -> List[Dict]:
+def build_flow_records(
+    df: pd.DataFrame, zip_latlon: pd.DataFrame
+) -> List[Dict]:
     """Create flow features from origin/destination columns if available."""
     df = df.copy()
     df.columns = [c.lower() for c in df.columns]
@@ -165,8 +173,14 @@ def build_flow_records(df: pd.DataFrame, zip_latlon: pd.DataFrame) -> List[Dict]
             "geometry": {
                 "type": "LineString",
                 "coordinates": [
-                    [float(orec.iloc[0]["longitude"]), float(orec.iloc[0]["latitude"])],
-                    [float(drec.iloc[0]["longitude"]), float(drec.iloc[0]["latitude"])],
+                    [
+                        float(orec.iloc[0]["longitude"]),
+                        float(orec.iloc[0]["latitude"]),
+                    ],
+                    [
+                        float(drec.iloc[0]["longitude"]),
+                        float(drec.iloc[0]["latitude"]),
+                    ],
                 ],
             },
             "properties": {
@@ -184,7 +198,9 @@ def build_flow_records(df: pd.DataFrame, zip_latlon: pd.DataFrame) -> List[Dict]
     return flows
 
 
-def create_heatmap_features(df: pd.DataFrame, zip_latlon: pd.DataFrame) -> List[Dict]:
+def create_heatmap_features(
+    df: pd.DataFrame, zip_latlon: pd.DataFrame
+) -> List[Dict]:
     """Convert aggregated ZIP data to GeoJSON point features."""
     features = []
     for _, row in df.iterrows():
@@ -197,7 +213,10 @@ def create_heatmap_features(df: pd.DataFrame, zip_latlon: pd.DataFrame) -> List[
             "type": "Feature",
             "geometry": {
                 "type": "Point",
-                "coordinates": [float(rec.iloc[0]["longitude"]), float(rec.iloc[0]["latitude"])],
+                "coordinates": [
+                    float(rec.iloc[0]["longitude"]),
+                    float(rec.iloc[0]["latitude"]),
+                ],
             },
             "properties": props,
         }
@@ -216,9 +235,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset='utf-8'/>
 <title>Client Spend Map</title>
-<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
-<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet'/>
-<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+<meta name='viewport'
+      content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css'
+      rel='stylesheet'/>
+<script
+  src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
 <style>
   body { margin:0; padding:0; }
   #map { position:absolute; top:0; bottom:0; width:100%; }
@@ -254,16 +276,24 @@ map.on('load', () => {
     id: 'flow-lines',
     type: 'line',
     source: 'flows',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round'
+    },
     paint: {
-      'line-width': [ 'interpolate', ['linear'], ['get', 'magnitude'], 0, 1, 1, 6 ],
+      'line-width': [
+        'interpolate', ['linear'], ['get', 'magnitude'], 0, 1, 1, 6
+      ],
       'line-color': '#FF5733',
       'line-opacity': 0.6
     }
   });
 
   map.on('mousemove', 'zip-heat', (e) => {
-    const features = map.queryRenderedFeatures(e.point, { layers: ['zip-heat'] });
+    const features = map.queryRenderedFeatures(
+      e.point,
+      { layers: ['zip-heat'] }
+    );
     if (!features.length) return;
     const f = features[0];
     const p = f.properties;
@@ -276,7 +306,11 @@ map.on('load', () => {
         `<strong>Visits:</strong> ${p.visits || 'N/A'}`
       )
       .addTo(map);
-    map.getCanvas().addEventListener('mouseleave', () => popup.remove(), { once: true });
+    map.getCanvas().addEventListener(
+      'mouseleave',
+      () => popup.remove(),
+      { once: true }
+    );
   });
 });
 </script>
@@ -288,23 +322,34 @@ map.on('load', () => {
 # Main CLI
 #########################
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Process client data and create Mapbox visualization"
     )
     parser.add_argument(
         "--zip1",
-        default="https://github.com/MediaJohnD/maps/raw/882266c266d0ca3fa73c5e167b02ec3e054c3b3c/Recovery_Results.zip",
+        default=(
+            "https://github.com/MediaJohnD/maps/raw/"
+            "882266c266d0ca3fa73c5e167b02ec3e054c3b3c/Recovery_Results.zip"
+        ),
         help="First zip file URL or local path",
     )
     parser.add_argument(
         "--zip2",
-        default="https://github.com/MediaJohnD/maps/raw/882266c266d0ca3fa73c5e167b02ec3e054c3b3c/updated%20sheets%20and%20numbers%20May%2019.zip",
+        default=(
+            "https://github.com/MediaJohnD/maps/raw/"
+            "882266c266d0ca3fa73c5e167b02ec3e054c3b3c/"
+            "updated%20sheets%20and%20numbers%20May%2019.zip"
+        ),
         help="Second zip file URL or local path",
     )
     parser.add_argument(
         "--zip-latlon",
-        default="https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/uszips.csv",
+        default=(
+            "https://raw.githubusercontent.com/OpenDataDE/"
+            "State-zip-code-GeoJSON/master/uszips.csv"
+        ),
         help="CSV mapping ZIP to latitude/longitude",
     )
     parser.add_argument(
@@ -330,11 +375,18 @@ def main() -> None:
     flows_parts = []
 
     zip_latlon = pd.read_csv(args.zip_latlon)
-    zip_latlon["ZIP"] = zip_latlon[zip_latlon.columns[0]].astype(str).str.zfill(5)
-    if "latitude" not in zip_latlon.columns or "longitude" not in zip_latlon.columns:
+    zip_latlon["ZIP"] = (
+        zip_latlon[zip_latlon.columns[0]].astype(str).str.zfill(5)
+    )
+    if (
+        "latitude" not in zip_latlon.columns
+        or "longitude" not in zip_latlon.columns
+    ):
         # Some datasets use LAT and LNG column names
         if {"LAT", "LNG"}.issubset(zip_latlon.columns):
-            zip_latlon.rename(columns={"LAT": "latitude", "LNG": "longitude"}, inplace=True)
+            zip_latlon.rename(
+                columns={"LAT": "latitude", "LNG": "longitude"}, inplace=True
+            )
 
     for df in datasets.values():
         agg = aggregate_by_geo(df)
