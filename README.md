@@ -7,11 +7,10 @@ ingestion, cleaning, modeling and interactive dashboards.
 
 ## Requirements
 
-Install the required Python packages:
+Install the required Python packages listed in `requirements.txt`:
 
 ```bash
-pip install pandas geopandas matplotlib folium plotly dash scikit-learn \
-    xgboost lightgbm catboost tensorflow
+pip install -r requirements.txt
 ```
 
 ### Sample ZIP archives
