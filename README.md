@@ -114,3 +114,16 @@ The script uses default URLs for the two zip archives and the ZIP‑to‑coordin
 CSV, so running the command above will create `client_map.html` with sample
 data. Pass `--zip1`, `--zip2` or `--zip-latlon` to override these sources with
 local paths or alternate links.
+
+## Contributing
+
+Install the `pre-commit` tool and set up the hooks so formatting and linting
+run automatically on each commit:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+The hooks invoke `black --line-length 79` and `flake8` to keep the codebase
+consistent.
