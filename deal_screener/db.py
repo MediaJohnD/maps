@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
-from models import Deal
+from models import Candidate, Deal
 
 DB_PATH = os.environ.get("DEAL_SCREENER_DB_PATH", "deal_screener.db")
 
@@ -46,6 +46,22 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE TABLE IF NOT EXISTS config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS candidates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    address TEXT NOT NULL DEFAULT '',
+    zip TEXT NOT NULL DEFAULT '',
+    amount REAL,
+    sale_date TEXT,
+    raw_snippet TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new',
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    imported_deal_id INTEGER,
+    UNIQUE(source, external_id)
 );
 """
 
@@ -151,6 +167,94 @@ def save_fulton_lookup(deal_id: int, lookup: dict) -> Optional[Deal]:
             (json.dumps(lookup), _now(), deal_id),
         )
     return get_deal(deal_id)
+
+
+def _row_to_candidate(row: sqlite3.Row) -> Candidate:
+    return Candidate(**dict(row))
+
+
+def upsert_candidates(candidates: list) -> dict:
+    """Inserts new candidates, refreshes address/amount/sale_date/last_seen_at
+    on ones already seen (matched by source+external_id). Leaves status,
+    first_seen_at, and imported_deal_id untouched on an existing row, so
+    re-scanning never resurrects something you've already dismissed or
+    imported."""
+    now = _now()
+    new_count = 0
+    updated_count = 0
+    with get_conn() as conn:
+        for c in candidates:
+            existing = conn.execute(
+                "SELECT id FROM candidates WHERE source = ? AND external_id = ?",
+                (c["source"], c["external_id"]),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE candidates SET address = ?, zip = ?, amount = ?, "
+                    "sale_date = ?, raw_snippet = ?, last_seen_at = ? "
+                    "WHERE id = ?",
+                    (
+                        c["address"], c["zip"], c.get("amount"),
+                        c.get("sale_date"), c.get("raw_snippet", ""), now,
+                        existing["id"],
+                    ),
+                )
+                updated_count += 1
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO candidates (
+                        source, external_id, address, zip, amount, sale_date,
+                        raw_snippet, status, first_seen_at, last_seen_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+                    """,
+                    (
+                        c["source"], c["external_id"], c["address"], c["zip"],
+                        c.get("amount"), c.get("sale_date"),
+                        c.get("raw_snippet", ""), now, now,
+                    ),
+                )
+                new_count += 1
+    return {"new": new_count, "updated": updated_count}
+
+
+def list_candidates(status: str = None) -> list:
+    query = "SELECT * FROM candidates"
+    params = ()
+    if status:
+        query += " WHERE status = ?"
+        params = (status,)
+    query += " ORDER BY first_seen_at DESC"
+    with get_conn() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [_row_to_candidate(row) for row in rows]
+
+
+def get_candidate(candidate_id: int) -> Optional[Candidate]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM candidates WHERE id = ?", (candidate_id,)
+        ).fetchone()
+    return _row_to_candidate(row) if row else None
+
+
+def update_candidate_status(candidate_id: int, status: str) -> Optional[Candidate]:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE candidates SET status = ? WHERE id = ?",
+            (status, candidate_id),
+        )
+    return get_candidate(candidate_id)
+
+
+def mark_candidate_imported(candidate_id: int, deal_id: int) -> Optional[Candidate]:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE candidates SET status = 'imported', imported_deal_id = ? "
+            "WHERE id = ?",
+            (deal_id, candidate_id),
+        )
+    return get_candidate(candidate_id)
 
 
 def get_config(key: str) -> Optional[str]:

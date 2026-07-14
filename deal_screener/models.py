@@ -49,6 +49,25 @@ class Deal:
     fulton_county_lookup: Optional[dict] = None
 
 
+CANDIDATE_STATUSES = ("new", "imported", "dismissed")
+
+
+@dataclass
+class Candidate:
+    id: Optional[int] = None
+    source: str = ""  # "fulton_delinquent_tax" | "fulton_sheriff_tax_sale"
+    external_id: str = ""  # parcel id, used with source for dedup
+    address: str = ""
+    zip: str = ""
+    amount: Optional[float] = None  # amount owed, or opening bid
+    sale_date: Optional[str] = None  # tax-sale candidates only
+    raw_snippet: str = ""
+    status: str = "new"
+    first_seen_at: Optional[str] = None
+    last_seen_at: Optional[str] = None
+    imported_deal_id: Optional[int] = None
+
+
 @dataclass
 class FinancingScenario:
     down_pct: float

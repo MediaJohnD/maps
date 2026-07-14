@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 load_dotenv()  # before other local imports: several read env vars at import time
 
+import candidate_sources
 import db
 import fulton_county
 import freddie_mac
@@ -198,6 +199,66 @@ def fulton_lookup(deal_id: int):
     lookup_result = fulton_county.lookup(deal.address)
     updated = db.save_fulton_lookup(deal_id, lookup_result)
     return _deal_with_tiers(updated, _current_default_rate())
+
+
+# ---------------------------------------------------------------------------
+# Candidate sourcing (Fulton County public-records bulk scans)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/candidates/scan")
+def scan_candidates():
+    """Runs both bulk scans, persists results (dedup + status-preserving),
+    and returns the current 'new' candidates plus any per-source errors."""
+    found, errors = candidate_sources.scan_all()
+    summary = db.upsert_candidates(found)
+    return {
+        "summary": summary,
+        "errors": errors,
+        "candidates": [asdict(c) for c in db.list_candidates(status="new")],
+    }
+
+
+@app.get("/api/candidates")
+def list_candidates(status: Optional[str] = None):
+    return [asdict(c) for c in db.list_candidates(status)]
+
+
+@app.post("/api/candidates/{candidate_id}/dismiss")
+def dismiss_candidate(candidate_id: int):
+    candidate = db.update_candidate_status(candidate_id, "dismissed")
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return asdict(candidate)
+
+
+@app.post("/api/candidates/{candidate_id}/import")
+def import_candidate(candidate_id: int):
+    candidate = db.get_candidate(candidate_id)
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    if candidate.source == "fulton_delinquent_tax":
+        note = (
+            f"Sourced from Fulton County delinquent tax list. "
+            f"Amount owed: ${candidate.amount:,.2f}."
+        )
+    else:
+        note = f"Sourced from Fulton County Sheriff's tax sale list. "
+        if candidate.amount is not None:
+            note += f"Opening bid: ${candidate.amount:,.2f}. "
+        if candidate.sale_date:
+            note += f"Sale date: {candidate.sale_date}."
+
+    deal = Deal(
+        address=candidate.address,
+        zip=candidate.zip,
+        source="fulton_county_lookup",
+        condition_notes=note,
+        raw_pasted_text=candidate.raw_snippet,
+    )
+    saved = db.create_deal(deal)
+    db.mark_candidate_imported(candidate_id, saved.id)
+    return _deal_with_tiers(saved, _current_default_rate())
 
 
 # ---------------------------------------------------------------------------

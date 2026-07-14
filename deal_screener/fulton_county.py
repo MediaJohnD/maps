@@ -9,9 +9,9 @@ government sites publishing records under the state's Open Records Act:
 - fultoncountytaxes.org (Tax Commissioner — delinquent-tax status)
 
 Neither is a listing aggregator and neither publishes a scraping-restrictive
-ToS the way Zillow/Redfin/realtor.com do; this module is rate-limited to
-one request every few seconds to stay well within "occasional, human-paced
-lookup by parcel/address" rather than bulk harvesting.
+ToS the way Zillow/Redfin/realtor.com do; requests go through
+gov_records_http's shared throttle to stay well within "occasional,
+human-paced lookup by parcel/address" rather than bulk harvesting.
 
 IMPORTANT — build-environment limitation: this code was written without
 network access to fultonassessor.org / fultoncountytaxes.org (the sandbox
@@ -26,44 +26,17 @@ as "best effort, verify against the raw_snippet" until confirmed.
 """
 
 import re
-import time
 from urllib.parse import quote
 
 import requests
 
-RATE_LIMIT_SECONDS = 3.0
-REQUEST_TIMEOUT_SECONDS = 15
-USER_AGENT = (
-    "deal-screener/0.1 (personal underwriting tool; single-user, "
-    "human-paced lookups; contact via listed county assessor account)"
-)
+from gov_records_http import throttled_get
 
 ASSESSOR_SEARCH_URL = "https://qpublic.schneidercorp.com/Application.aspx"
 ASSESSOR_APP_ID = "1132"  # Fulton County's qPublic AppID as of this writing
 TAX_COMMISSIONER_SEARCH_URL = (
     "https://www.fultoncountytaxes.org/property-taxes/property-search"
 )
-
-_last_request_at = 0.0
-
-
-def _throttle() -> None:
-    global _last_request_at
-    elapsed = time.monotonic() - _last_request_at
-    if elapsed < RATE_LIMIT_SECONDS:
-        time.sleep(RATE_LIMIT_SECONDS - elapsed)
-    _last_request_at = time.monotonic()
-
-
-def _get(url: str, params: dict) -> requests.Response:
-    _throttle()
-    return requests.get(
-        url,
-        params=params,
-        headers={"User-Agent": USER_AGENT},
-        timeout=REQUEST_TIMEOUT_SECONDS,
-    )
-
 
 _DOLLAR_NEAR_LABEL_RE = re.compile(
     r"(assessed\s+value|total\s+appraised\s+value)\D{0,20}\$?([\d,]+)",
@@ -90,7 +63,7 @@ def lookup_assessor(address: str) -> dict:
         "error": None,
     }
     try:
-        response = _get(
+        response = throttled_get(
             ASSESSOR_SEARCH_URL,
             params={"AppID": ASSESSOR_APP_ID, "PageType": "Search", "q": address},
         )
@@ -136,7 +109,7 @@ def lookup_delinquent_tax(address_or_parcel: str) -> dict:
         "error": None,
     }
     try:
-        response = _get(
+        response = throttled_get(
             TAX_COMMISSIONER_SEARCH_URL,
             params={"q": quote(address_or_parcel)},
         )

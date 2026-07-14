@@ -83,6 +83,7 @@
   <h1>30315 Deal Screener</h1>
   <nav>
     <button id="nav-add" class="active">Add Deal</button>
+    <button id="nav-candidates">Find Candidates</button>
     <button id="nav-pipeline">Pipeline</button>
   </nav>
 </header>
@@ -147,6 +148,30 @@
       <button class="primary" id="btn-save-deal">Save Deal</button>
       <div id="save-status"></div>
     </div>
+  </section>
+
+  <section id="view-candidates" class="view">
+    <div class="card">
+      <h3>Fulton County public-records scan</h3>
+      <p class="muted">
+        Scans the Fulton County delinquent-tax list and upcoming Sheriff's
+        tax-sale list, filtered to your target ZIP(s). Public records only —
+        no listing sites. Best-effort: the county's page format hasn't been
+        verified live, so a scan may come back empty or need adjustment;
+        every candidate below carries a raw snippet to sanity-check.
+      </p>
+      <button class="primary" id="btn-scan-candidates">Scan now</button>
+      <div id="scan-status"></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th><th>Address</th><th>Zip</th><th>Amount</th>
+          <th>Sale date</th><th>First seen</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="candidate-rows"></tbody>
+    </table>
   </section>
 
   <section id="view-pipeline" class="view">
@@ -233,12 +258,77 @@ function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   document.getElementById("nav-add").classList.toggle("active", id === "view-add");
+  document.getElementById("nav-candidates").classList.toggle("active", id === "view-candidates");
   document.getElementById("nav-pipeline").classList.toggle("active", id === "view-pipeline" || id === "view-detail");
 }
 
 document.getElementById("nav-add").onclick = () => showView("view-add");
+document.getElementById("nav-candidates").onclick = () => { showView("view-candidates"); loadCandidates(); };
 document.getElementById("nav-pipeline").onclick = () => { showView("view-pipeline"); loadPipeline(); };
 document.getElementById("btn-back-to-pipeline").onclick = () => { showView("view-pipeline"); loadPipeline(); };
+
+// --- Find Candidates ---
+async function loadCandidates() {
+  const res = await fetch("/api/candidates?status=new");
+  const candidates = await res.json();
+  renderCandidates(candidates);
+}
+
+function renderCandidates(candidates) {
+  const tbody = document.getElementById("candidate-rows");
+  if (!candidates.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">No candidates yet — click "Scan now".</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = candidates.map(c => `
+    <tr>
+      <td>${c.source === "fulton_delinquent_tax" ? "Delinquent tax" : "Sheriff tax sale"}</td>
+      <td>${c.address}</td>
+      <td>${c.zip}</td>
+      <td>${c.amount != null ? "$" + Number(c.amount).toLocaleString() : "n/a"}</td>
+      <td>${c.sale_date || "n/a"}</td>
+      <td>${new Date(c.first_seen_at).toLocaleDateString()}</td>
+      <td>
+        <button class="secondary" data-import="${c.id}">Import to screener</button>
+        <button class="secondary" data-dismiss="${c.id}">Dismiss</button>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.querySelectorAll("[data-import]").forEach(btn => {
+    btn.onclick = async () => {
+      const res = await fetch(`/api/candidates/${btn.dataset.import}/import`, {method: "POST"});
+      if (!res.ok) { alert("Import failed: " + await res.text()); return; }
+      const data = await res.json();
+      loadCandidates();
+      openDetail(data.deal.id);
+    };
+  });
+  tbody.querySelectorAll("[data-dismiss]").forEach(btn => {
+    btn.onclick = async () => {
+      await fetch(`/api/candidates/${btn.dataset.dismiss}/dismiss`, {method: "POST"});
+      loadCandidates();
+    };
+  });
+}
+
+document.getElementById("btn-scan-candidates").onclick = async () => {
+  const el = document.getElementById("scan-status");
+  el.textContent = "Scanning (rate-limited, may take a few seconds)...";
+  try {
+    const res = await fetch("/api/candidates/scan", {method: "POST"});
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    let msg = `Found ${data.summary.new} new, ${data.summary.updated} already-seen candidates.`;
+    if (data.errors.length) {
+      msg += ` Errors: ${data.errors.join("; ")}`;
+    }
+    el.innerHTML = `<div class="${data.errors.length ? 'error' : 'success'}">${msg}</div>`;
+    loadCandidates();
+  } catch (e) {
+    el.innerHTML = `<div class="error">Scan failed: ${e.message}</div>`;
+  }
+};
 
 // --- Tabs ---
 document.querySelectorAll(".tabs button").forEach(btn => {

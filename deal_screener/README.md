@@ -47,6 +47,15 @@ pytest tests/ -v
 
 ## How it works
 
+- **Find Candidates** — bulk-scans Fulton County's public delinquent-tax
+  list and upcoming Sheriff's tax-sale list (same public-records exception
+  as the single-address lookup below), filtered to your target ZIP(s).
+  Results persist locally with a status (new / imported / dismissed) so
+  re-scanning never resurfaces something you've already handled. Import a
+  candidate to create a draft deal (address/zip pre-filled, price/rent
+  still $0 — you fill those in before it means anything) or dismiss it.
+  This is the actual sourcing half of the tool — see "Assumptions" below
+  for how unverified the live site format is.
 - **Add Deal** — paste text, upload a screenshot, or fill the form
   directly. Paste/screenshot both converge on the same editable
   parsed-fields form; nothing saves until you click Save.
@@ -135,19 +144,30 @@ lane a given deal will use; you pick the assumption rate per scenario.
   prominently. This can misfire on pages that lead with a fee or tax
   figure — which is exactly why the parsed form is always shown for
   correction before saving.
-- **Fulton County lookups (`fulton_county.py`) and the Freddie Mac PMMS
-  fetch (`freddie_mac.py`) were built without live network access to
+- **Fulton County lookups (`fulton_county.py`), the bulk candidate scans
+  (`candidate_sources.py`), and the Freddie Mac PMMS fetch
+  (`freddie_mac.py`) were all built without live network access to
   fultonassessor.org / fultoncountytaxes.org / freddiemac.com** — the
   sandbox this was built in has no egress to those hosts. The request
-  plumbing, rate-limiting (3s minimum between requests), and error
-  handling are solid and tested; the actual HTML-parsing regexes are
-  best-effort based on how these sites typically render (qPublic/Schneider
-  Corp assessor portals; Freddie Mac's documented PMMS history CSV export)
-  and have **not been verified against the live pages**. Both always
-  return a `raw_snippet`/graceful-fallback so you can sanity-check or
-  patch the selectors once you can hit the real site. Freddie Mac fetch
-  fails over to `config.DEFAULT_RATE_PCT` (7.3%) and flags the result as
-  `fallback_default` rather than silently guessing.
+  plumbing, rate-limiting (one shared 3s-minimum-interval throttle across
+  every Fulton County fetch, in `gov_records_http.py`), and error handling
+  are solid and tested; the actual HTML-parsing regexes are best-effort
+  based on how these sites typically render (qPublic/Schneider Corp
+  assessor portals; a plain "Label: value" layout guessed for the
+  delinquent-tax and tax-sale lists; Freddie Mac's documented PMMS history
+  CSV export) and have **not been verified against the live pages**.
+  `candidate_sources.py`'s row-parsing is unit-tested against
+  representative fixtures (`tests/test_candidate_sources.py`), which
+  confirms the extraction/filtering logic is correct *given* that
+  guessed layout — not that the guess matches reality. All of them
+  degrade gracefully: single lookups return a `raw_snippet` and an
+  `error` field instead of raising; a bulk scan returns whatever
+  candidates it found plus a list of per-source error strings rather than
+  failing the whole scan; Freddie Mac fetch falls back to
+  `config.DEFAULT_RATE_PCT` (7.3%) flagged as `fallback_default`. Expect
+  to spend a pass adjusting `DELINQUENT_TAX_LIST_URL`,
+  `SHERIFF_TAX_SALE_URL`, and their row regexes once you can hit the real
+  pages.
 - **No PMI modeling.** The 15/20/25% down comparison holds rate constant
   across all three tiers for an apples-to-apples read on down-payment
   size alone; in reality a <20%-down conventional loan may carry PMI or a
@@ -172,9 +192,12 @@ deal_screener/
   db.py               SQLite schema + CRUD
   screening.py         the financial engine (pure functions)
   parsing.py           regex + Anthropic text/vision extraction
-  fulton_county.py      Fulton County assessor + delinquent-tax lookups
-  freddie_mac.py         weekly-cached PMMS rate fetch
-  seed.py                 init DB + seed investor profile config
-  static/index.html       the whole frontend (vanilla JS, no build step)
-  tests/test_screening.py  regression + unit tests for the engine
+  fulton_county.py      Fulton County single-address assessor/tax lookups
+  candidate_sources.py   bulk delinquent-tax + tax-sale candidate scans
+  gov_records_http.py     shared rate-limited HTTP helper for the above two
+  freddie_mac.py            weekly-cached PMMS rate fetch
+  seed.py                    init DB + seed investor profile config
+  static/index.html           the whole frontend (vanilla JS, no build step)
+  tests/test_screening.py      regression + unit tests for the engine
+  tests/test_candidate_sources.py  fixture-based tests for the bulk scans
 ```
