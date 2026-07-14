@@ -99,16 +99,3 @@ DEFAULT_DOWN_PAYMENT_TIERS_PCT = (15.0, 20.0, 25.0)
 # feed into.
 MIN_GREEN_MONTHLY_CASH_FLOW = 200.0
 MIN_GREEN_DSCR = 1.0
-
-# HubSpot pipeline stage mapping. These are placeholder internal IDs —
-# HubSpot pipeline/stage IDs are account-specific and must be replaced with
-# the real ones from the target HubSpot portal (Settings -> Deals ->
-# Pipelines) before hubspot_sync.py will push to the correct stage.
-HUBSPOT_PIPELINE_ID = "default"
-HUBSPOT_STAGE_MAP = {
-    "screening": "appointmentscheduled",
-    "offer": "qualifiedtobuy",
-    "under_contract": "contractsent",
-    "closed": "closedwon",
-    "passed": "closedlost",
-}

@@ -40,8 +40,7 @@ CREATE TABLE IF NOT EXISTS deals (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     raw_pasted_text TEXT NOT NULL DEFAULT '',
-    fulton_county_lookup TEXT,
-    hubspot_deal_id TEXT
+    fulton_county_lookup TEXT
 );
 
 CREATE TABLE IF NOT EXISTS config (
@@ -89,8 +88,8 @@ def create_deal(deal: Deal) -> Deal:
                 property_type, listing_url, rent_monthly_total, tax_annual,
                 insurance_annual, hoa_monthly, condition_notes, source,
                 pipeline_stage, created_at, updated_at, raw_pasted_text,
-                fulton_county_lookup, hubspot_deal_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                fulton_county_lookup
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 deal.address, deal.zip, deal.price, deal.beds, deal.baths,
@@ -101,7 +100,6 @@ def create_deal(deal: Deal) -> Deal:
                 deal.raw_pasted_text,
                 json.dumps(deal.fulton_county_lookup)
                 if deal.fulton_county_lookup else None,
-                deal.hubspot_deal_id,
             ),
         )
         deal_id = cur.lastrowid
@@ -151,16 +149,6 @@ def save_fulton_lookup(deal_id: int, lookup: dict) -> Optional[Deal]:
             "UPDATE deals SET fulton_county_lookup = ?, updated_at = ? "
             "WHERE id = ?",
             (json.dumps(lookup), _now(), deal_id),
-        )
-    return get_deal(deal_id)
-
-
-def save_hubspot_deal_id(deal_id: int, hubspot_deal_id: str) -> Optional[Deal]:
-    with get_conn() as conn:
-        conn.execute(
-            "UPDATE deals SET hubspot_deal_id = ?, updated_at = ? "
-            "WHERE id = ?",
-            (hubspot_deal_id, _now(), deal_id),
         )
     return get_deal(deal_id)
 

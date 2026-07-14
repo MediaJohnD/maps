@@ -22,7 +22,6 @@ load_dotenv()  # before other local imports: several read env vars at import tim
 import db
 import fulton_county
 import freddie_mac
-import hubspot_sync
 import parsing
 import screening
 from config import DEFAULT_INVESTOR_PROFILE, DEFAULT_RATE_PCT
@@ -199,24 +198,6 @@ def fulton_lookup(deal_id: int):
     lookup_result = fulton_county.lookup(deal.address)
     updated = db.save_fulton_lookup(deal_id, lookup_result)
     return _deal_with_tiers(updated, _current_default_rate())
-
-
-@app.post("/api/deals/{deal_id}/push-hubspot")
-def push_hubspot(deal_id: int):
-    deal = _get_deal_or_404(deal_id)
-    rate_pct = _current_default_rate()
-    results = screening.evaluate_all_tiers(
-        deal, rate_pct, DEFAULT_INVESTOR_PROFILE.cash_available_for_deals
-    )
-    best_result = results[0]
-    try:
-        push_result = hubspot_sync.push_deal(deal, best_result)
-    except hubspot_sync.HubSpotNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
-    updated = db.save_hubspot_deal_id(deal_id, push_result["hubspot_deal_id"])
-    return _deal_with_tiers(updated, rate_pct)
 
 
 # ---------------------------------------------------------------------------

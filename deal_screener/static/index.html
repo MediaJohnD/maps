@@ -202,12 +202,6 @@
     </div>
 
     <div class="card">
-      <h3>HubSpot</h3>
-      <button class="secondary" id="btn-push-hubspot">Push to HubSpot</button>
-      <div id="hubspot-result"></div>
-    </div>
-
-    <div class="card">
       <h3>Notes &amp; pipeline stage</h3>
       <label>Pipeline stage</label>
       <select id="d-pipeline_stage">
@@ -420,10 +414,6 @@ function renderDetail(data) {
   if (d.fulton_county_lookup) {
     renderFultonResult(d.fulton_county_lookup);
   }
-  if (d.hubspot_deal_id) {
-    document.getElementById("hubspot-result").innerHTML =
-      `<div class="success">Synced — HubSpot deal ID ${d.hubspot_deal_id}</div>`;
-  }
 }
 
 function renderTiers(tiers) {
@@ -500,19 +490,6 @@ function renderFultonResult(lookup) {
     ${a.raw_snippet ? `<pre class="raw-snippet">${a.raw_snippet.replace(/</g, "&lt;")}</pre>` : ""}
   `;
 }
-
-document.getElementById("btn-push-hubspot").onclick = async () => {
-  const el = document.getElementById("hubspot-result");
-  el.textContent = "Pushing...";
-  try {
-    const res = await fetch(`/api/deals/${currentDealId}/push-hubspot`, {method: "POST"});
-    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-    const data = await res.json();
-    el.innerHTML = `<div class="success">Synced — HubSpot deal ID ${data.deal.hubspot_deal_id}</div>`;
-  } catch (e) {
-    el.innerHTML = `<div class="error">Push failed: ${e.message}</div>`;
-  }
-};
 
 document.getElementById("btn-save-detail").onclick = async () => {
   const statusEl = document.getElementById("detail-save-status");

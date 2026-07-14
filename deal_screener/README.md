@@ -57,8 +57,8 @@ pytest tests/ -v
   with editable assumptions (rate, vacancy/maintenance/capex/mgmt %,
   closing cost %, reserve months) that recalculate live via the backend
   (single source of truth for the math — the frontend never reimplements
-  the formulas). Also: a Fulton County lookup button, a manual "Push to
-  HubSpot" button, notes, and pipeline-stage control.
+  the formulas). Also: a Fulton County lookup button, notes, and
+  pipeline-stage control.
 
 ## Screening engine
 
@@ -119,15 +119,12 @@ lane a given deal will use; you pick the assumption rate per scenario.
 
 ## Assumptions made (things the spec left ambiguous)
 
-- **HubSpot integration uses the HubSpot CRM REST API (private app token)
-  instead of "HubSpot MCP."** MCP servers are consumed inside a Claude
-  session, not by a standalone script running unattended on your machine.
-  The REST API gets the same deliberate, one-button push behavior. If
-  you're doing this from inside a Claude session with HubSpot MCP
-  connected, you can just ask Claude to push a deal there directly instead.
-  `config.HUBSPOT_STAGE_MAP` holds **placeholder** HubSpot stage IDs —
-  replace with your portal's real pipeline/stage IDs (Settings -> Deals ->
-  Pipelines) before relying on this.
+- **No HubSpot integration.** The build spec proposed a manual "push to
+  HubSpot" action, but this tool's pipeline is intentionally kept separate
+  from any HubSpot account — those are business accounts, not appropriate
+  for this personal underwriting tool. `pipeline_stage` (screening / offer
+  / under_contract / closed / passed) lives entirely in this app's own
+  SQLite database; there's no external CRM sync at all.
 - **Regex-vs-LLM field split**: price, sqft, beds, baths, and zip are
   regex-extracted and treated as authoritative over the LLM's guess for
   those same fields (regex wins in the merge). Everything else (address,
@@ -177,7 +174,6 @@ deal_screener/
   parsing.py           regex + Anthropic text/vision extraction
   fulton_county.py      Fulton County assessor + delinquent-tax lookups
   freddie_mac.py         weekly-cached PMMS rate fetch
-  hubspot_sync.py         manual push-to-HubSpot (REST API)
   seed.py                 init DB + seed investor profile config
   static/index.html       the whole frontend (vanilla JS, no build step)
   tests/test_screening.py  regression + unit tests for the engine

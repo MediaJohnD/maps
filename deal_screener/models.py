@@ -47,7 +47,6 @@ class Deal:
     updated_at: Optional[str] = None
     raw_pasted_text: str = ""
     fulton_county_lookup: Optional[dict] = None
-    hubspot_deal_id: Optional[str] = None
 
 
 @dataclass
