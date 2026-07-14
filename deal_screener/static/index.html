@@ -1,0 +1,535 @@
+<title>30315 Deal Screener</title>
+<style>
+  :root {
+    --green: #1a7f37; --green-bg: #e6f4ea;
+    --amber: #9a6700; --amber-bg: #fff8c5;
+    --red: #b3261e; --red-bg: #fdecea;
+    --border: #d0d7de; --muted: #57606a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0; background: #f6f8fa; color: #1f2328;
+  }
+  header {
+    background: #1f2328; color: white; padding: 14px 24px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  nav button {
+    background: none; border: none; color: #c9d1d9; font-size: 14px;
+    cursor: pointer; padding: 6px 10px; border-radius: 6px;
+  }
+  nav button.active { background: #30363d; color: white; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .card {
+    background: white; border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tabs button {
+    border: 1px solid var(--border); background: white; padding: 6px 12px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  .tabs button.active { background: #1f2328; color: white; }
+  textarea { width: 100%; min-height: 140px; font-family: monospace; font-size: 13px; }
+  .form-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;
+  }
+  .form-grid label { font-size: 12px; color: var(--muted); display: block; }
+  .form-grid input, .form-grid select, .form-grid textarea {
+    width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px;
+  }
+  .span-3 { grid-column: span 3; }
+  button.primary {
+    background: #1f6feb; color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; margin-top: 12px;
+  }
+  button.secondary {
+    background: white; border: 1px solid var(--border); padding: 8px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; margin-top: 12px; margin-right: 8px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+  th { cursor: pointer; color: var(--muted); user-select: none; }
+  tr.deal-row { cursor: pointer; }
+  tr.deal-row:hover { background: #f6f8fa; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  }
+  .badge.green { background: var(--green-bg); color: var(--green); }
+  .badge.amber { background: var(--amber-bg); color: var(--amber); }
+  .badge.red { background: var(--red-bg); color: var(--red); }
+  .filters { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .tier-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .tier-card h4 { margin: 0 0 8px; }
+  .tier-card .metric { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .reasons { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .assumptions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .assumptions label { font-size: 12px; color: var(--muted); display: block; }
+  .assumptions input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .error { color: var(--red); font-size: 13px; margin-top: 8px; }
+  .success { color: var(--green); font-size: 13px; margin-top: 8px; }
+  pre.raw-snippet {
+    max-height: 160px; overflow: auto; background: #f6f8fa; padding: 8px; font-size: 11px;
+  }
+</style>
+
+<header>
+  <h1>30315 Deal Screener</h1>
+  <nav>
+    <button id="nav-add" class="active">Add Deal</button>
+    <button id="nav-pipeline">Pipeline</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-add" class="view active">
+    <div class="card">
+      <div class="tabs">
+        <button data-tab="paste" class="active">Paste Text</button>
+        <button data-tab="screenshot">Upload Screenshot</button>
+        <button data-tab="manual">Manual Entry</button>
+      </div>
+
+      <div id="tab-paste" class="tab-panel">
+        <textarea id="paste-text" placeholder="Paste the listing text here (address, price, beds/baths, sqft, description, agent remarks)..."></textarea>
+        <button class="primary" id="btn-parse-text">Parse</button>
+      </div>
+
+      <div id="tab-screenshot" class="tab-panel" style="display:none">
+        <input type="file" id="screenshot-file" accept="image/*" />
+        <button class="primary" id="btn-parse-screenshot">Parse</button>
+      </div>
+
+      <div id="tab-manual" class="tab-panel" style="display:none">
+        <p class="muted">Fill the form below directly — no parsing needed.</p>
+      </div>
+
+      <div id="parse-status"></div>
+    </div>
+
+    <div class="card" id="deal-form-card" style="display:none">
+      <h3>Confirm / edit deal fields before saving</h3>
+      <p class="muted">Nothing is saved until you click Save Deal — always double-check a parsed result.</p>
+      <div class="form-grid">
+        <div><label>Address</label><input id="f-address" /></div>
+        <div><label>ZIP</label><input id="f-zip" /></div>
+        <div><label>Price ($)</label><input id="f-price" type="number" /></div>
+
+        <div><label>Beds</label><input id="f-beds" type="number" step="0.5" /></div>
+        <div><label>Baths</label><input id="f-baths" type="number" step="0.5" /></div>
+        <div><label>Sqft</label><input id="f-sqft" type="number" /></div>
+
+        <div><label>Unit count</label><input id="f-unit_count" type="number" value="1" /></div>
+        <div>
+          <label>Property type</label>
+          <select id="f-property_type">
+            <option>SFH</option><option>duplex</option><option>tri</option><option>quad</option>
+          </select>
+        </div>
+        <div><label>Listing URL (reference only)</label><input id="f-listing_url" /></div>
+
+        <div><label>Total monthly rent ($)</label><input id="f-rent_monthly_total" type="number" /></div>
+        <div><label>Annual property tax ($)</label><input id="f-tax_annual" type="number" /></div>
+        <div><label>Annual insurance ($)</label><input id="f-insurance_annual" type="number" /></div>
+
+        <div><label>Monthly HOA ($)</label><input id="f-hoa_monthly" type="number" /></div>
+        <div class="span-3">
+          <label>Condition notes</label>
+          <textarea id="f-condition_notes" style="min-height:60px"></textarea>
+        </div>
+      </div>
+      <button class="primary" id="btn-save-deal">Save Deal</button>
+      <div id="save-status"></div>
+    </div>
+  </section>
+
+  <section id="view-pipeline" class="view">
+    <div class="filters">
+      <label>Filter stage:</label>
+      <select id="stage-filter">
+        <option value="">All</option>
+        <option value="screening">Screening</option>
+        <option value="offer">Offer</option>
+        <option value="under_contract">Under contract</option>
+        <option value="closed">Closed</option>
+        <option value="passed">Passed</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Address</th><th>Zip</th><th>Price</th><th>Rent</th>
+          <th data-sort="monthly_cash_flow">Cash flow (15%)</th>
+          <th data-sort="dscr">DSCR (15%)</th>
+          <th data-sort="cash_to_close">Cash to close (15%)</th>
+          <th>Verdict</th><th>Stage</th>
+        </tr>
+      </thead>
+      <tbody id="pipeline-rows"></tbody>
+    </table>
+  </section>
+
+  <section id="view-detail" class="view">
+    <button class="secondary" id="btn-back-to-pipeline">&larr; Back to pipeline</button>
+    <div class="card" id="detail-header"></div>
+
+    <div class="card">
+      <h3>Assumptions (recalculates live)</h3>
+      <div class="assumptions">
+        <div><label>Rate %</label><input id="a-rate_pct" type="number" step="0.05" /></div>
+        <div><label>Loan years</label><input id="a-loan_years" type="number" /></div>
+        <div><label>Closing cost %</label><input id="a-closing_cost_pct" type="number" step="0.5" /></div>
+        <div><label>Reserve months</label><input id="a-reserve_months" type="number" step="0.5" /></div>
+        <div><label>Vacancy %</label><input id="a-vacancy_pct" type="number" step="0.5" /></div>
+        <div><label>Maintenance %</label><input id="a-maintenance_pct" type="number" step="0.5" /></div>
+        <div><label>CapEx %</label><input id="a-capex_pct" type="number" step="0.5" /></div>
+        <div><label>Mgmt %</label><input id="a-mgmt_pct" type="number" step="0.5" /></div>
+      </div>
+    </div>
+
+    <div class="tiers" id="detail-tiers"></div>
+
+    <div class="card">
+      <h3>Fulton County records</h3>
+      <button class="secondary" id="btn-fulton-lookup">Check Fulton County records</button>
+      <div id="fulton-result"></div>
+    </div>
+
+    <div class="card">
+      <h3>HubSpot</h3>
+      <button class="secondary" id="btn-push-hubspot">Push to HubSpot</button>
+      <div id="hubspot-result"></div>
+    </div>
+
+    <div class="card">
+      <h3>Notes &amp; pipeline stage</h3>
+      <label>Pipeline stage</label>
+      <select id="d-pipeline_stage">
+        <option value="screening">Screening</option>
+        <option value="offer">Offer</option>
+        <option value="under_contract">Under contract</option>
+        <option value="closed">Closed</option>
+        <option value="passed">Passed</option>
+      </select>
+      <label style="margin-top:8px">Condition notes</label>
+      <textarea id="d-condition_notes" style="width:100%; min-height:80px"></textarea>
+      <button class="primary" id="btn-save-detail">Save changes</button>
+      <div id="detail-save-status"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const FIELDS = ["address","zip","price","beds","baths","sqft","unit_count",
+  "property_type","listing_url","rent_monthly_total","tax_annual",
+  "insurance_annual","hoa_monthly","condition_notes"];
+
+let currentDealId = null;
+let sortKey = null;
+let sortAsc = true;
+let allDeals = [];
+
+function showView(id) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.getElementById("nav-add").classList.toggle("active", id === "view-add");
+  document.getElementById("nav-pipeline").classList.toggle("active", id === "view-pipeline" || id === "view-detail");
+}
+
+document.getElementById("nav-add").onclick = () => showView("view-add");
+document.getElementById("nav-pipeline").onclick = () => { showView("view-pipeline"); loadPipeline(); };
+document.getElementById("btn-back-to-pipeline").onclick = () => { showView("view-pipeline"); loadPipeline(); };
+
+// --- Tabs ---
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".tab-panel").forEach(p => p.style.display = "none");
+    document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
+    if (btn.dataset.tab === "manual") {
+      document.getElementById("deal-form-card").style.display = "block";
+    }
+  };
+});
+
+function fillForm(fields) {
+  FIELDS.forEach(f => {
+    const el = document.getElementById("f-" + f);
+    if (el && fields[f] !== undefined && fields[f] !== null) el.value = fields[f];
+  });
+  document.getElementById("deal-form-card").style.display = "block";
+}
+
+document.getElementById("btn-parse-text").onclick = async () => {
+  const raw_text = document.getElementById("paste-text").value;
+  const statusEl = document.getElementById("parse-status");
+  statusEl.textContent = "Parsing...";
+  try {
+    const res = await fetch("/api/parse/text", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({raw_text})
+    });
+    if (!res.ok) throw new Error(await res.text());
+    fillForm(await res.json());
+    document.getElementById("f-condition_notes").dataset.rawPastedText = raw_text;
+    statusEl.textContent = "Parsed — review fields below before saving.";
+  } catch (e) {
+    statusEl.innerHTML = `<div class="error">Parse failed: ${e.message}</div>`;
+  }
+};
+
+document.getElementById("btn-parse-screenshot").onclick = async () => {
+  const fileInput = document.getElementById("screenshot-file");
+  const statusEl = document.getElementById("parse-status");
+  if (!fileInput.files.length) { statusEl.textContent = "Choose an image first."; return; }
+  const formData = new FormData();
+  formData.append("image", fileInput.files[0]);
+  statusEl.textContent = "Parsing screenshot...";
+  try {
+    const res = await fetch("/api/parse/screenshot", {method: "POST", body: formData});
+    if (!res.ok) throw new Error(await res.text());
+    fillForm(await res.json());
+    statusEl.textContent = "Parsed — review fields below before saving.";
+  } catch (e) {
+    statusEl.innerHTML = `<div class="error">Parse failed: ${e.message}</div>`;
+  }
+};
+
+document.getElementById("btn-save-deal").onclick = async () => {
+  const payload = {};
+  FIELDS.forEach(f => {
+    const el = document.getElementById("f-" + f);
+    if (!el) return;
+    payload[f] = el.type === "number" ? (el.value === "" ? 0 : parseFloat(el.value)) : el.value;
+  });
+  payload.source = document.querySelector(".tabs button.active").dataset.tab === "paste"
+    ? "manual_paste"
+    : document.querySelector(".tabs button.active").dataset.tab === "screenshot"
+    ? "screenshot" : "manual_entry";
+  payload.raw_pasted_text = document.getElementById("paste-text").value || "";
+
+  const statusEl = document.getElementById("save-status");
+  try {
+    const res = await fetch("/api/deals", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    statusEl.innerHTML = `<div class="success">Saved. Switch to the Pipeline tab to see it.</div>`;
+  } catch (e) {
+    statusEl.innerHTML = `<div class="error">Save failed: ${e.message}</div>`;
+  }
+};
+
+// --- Pipeline ---
+function verdictBadge(v) {
+  return `<span class="badge ${v}">${v}</span>`;
+}
+
+async function loadPipeline() {
+  const res = await fetch("/api/deals");
+  allDeals = await res.json();
+  renderPipeline();
+}
+
+function renderPipeline() {
+  const filter = document.getElementById("stage-filter").value;
+  let rows = allDeals.filter(d => !filter || d.deal.pipeline_stage === filter);
+  if (sortKey) {
+    rows = rows.slice().sort((a, b) => {
+      const av = a.tiers[0][sortKey], bv = b.tiers[0][sortKey];
+      return sortAsc ? av - bv : bv - av;
+    });
+  }
+  const tbody = document.getElementById("pipeline-rows");
+  tbody.innerHTML = rows.map(r => {
+    const t = r.tiers[0]; // 15% down tier
+    return `<tr class="deal-row" data-id="${r.deal.id}">
+      <td>${r.deal.address || "(no address)"}</td>
+      <td>${r.deal.zip}</td>
+      <td>$${Number(r.deal.price).toLocaleString()}</td>
+      <td>$${Number(r.deal.rent_monthly_total).toLocaleString()}</td>
+      <td>$${Math.round(t.monthly_cash_flow).toLocaleString()}</td>
+      <td>${t.dscr.toFixed(2)}</td>
+      <td>$${Math.round(t.cash_to_close).toLocaleString()}</td>
+      <td>${verdictBadge(t.verdict)}</td>
+      <td>${r.deal.pipeline_stage}</td>
+    </tr>`;
+  }).join("");
+  tbody.querySelectorAll("tr.deal-row").forEach(tr => {
+    tr.onclick = () => openDetail(parseInt(tr.dataset.id));
+  });
+}
+
+document.getElementById("stage-filter").onchange = renderPipeline;
+document.querySelectorAll("th[data-sort]").forEach(th => {
+  th.onclick = () => {
+    const key = th.dataset.sort;
+    sortAsc = sortKey === key ? !sortAsc : true;
+    sortKey = key;
+    renderPipeline();
+  };
+});
+
+// --- Detail ---
+async function openDetail(id) {
+  currentDealId = id;
+  showView("view-detail");
+  await refreshDetail();
+}
+
+let recomputeTimer = null;
+
+async function refreshDetail() {
+  const res = await fetch(`/api/deals/${currentDealId}`);
+  const data = await res.json();
+  renderDetail(data);
+}
+
+function renderDetail(data) {
+  const d = data.deal;
+  document.getElementById("detail-header").innerHTML = `
+    <h2>${d.address || "(no address)"} <span class="muted">${d.zip}</span></h2>
+    <p class="muted">$${Number(d.price).toLocaleString()} &middot; ${d.property_type},
+    ${d.unit_count} unit(s) &middot; rent $${Number(d.rent_monthly_total).toLocaleString()}/mo
+    &middot; source: ${d.source}</p>`;
+
+  // Seed assumptions from the 15% tier's scenario
+  const s = data.tiers[0].scenario;
+  document.getElementById("a-rate_pct").value = s.rate_pct;
+  document.getElementById("a-loan_years").value = s.loan_years;
+  document.getElementById("a-closing_cost_pct").value = s.closing_cost_pct;
+  document.getElementById("a-reserve_months").value = s.reserve_months;
+  document.getElementById("a-vacancy_pct").value = s.vacancy_pct;
+  document.getElementById("a-maintenance_pct").value = s.maintenance_pct;
+  document.getElementById("a-capex_pct").value = s.capex_pct;
+  document.getElementById("a-mgmt_pct").value = s.mgmt_pct;
+
+  renderTiers(data.tiers);
+
+  document.getElementById("d-pipeline_stage").value = d.pipeline_stage;
+  document.getElementById("d-condition_notes").value = d.condition_notes || "";
+
+  if (d.fulton_county_lookup) {
+    renderFultonResult(d.fulton_county_lookup);
+  }
+  if (d.hubspot_deal_id) {
+    document.getElementById("hubspot-result").innerHTML =
+      `<div class="success">Synced — HubSpot deal ID ${d.hubspot_deal_id}</div>`;
+  }
+}
+
+function renderTiers(tiers) {
+  document.getElementById("detail-tiers").innerHTML = tiers.map(t => `
+    <div class="tier-card">
+      <h4>${t.scenario.down_pct}% down ${verdictBadge(t.verdict)}</h4>
+      <div class="metric"><span>Loan amount</span><span>$${Math.round(t.loan_amount).toLocaleString()}</span></div>
+      <div class="metric"><span>P&amp;I</span><span>$${Math.round(t.principal_interest).toLocaleString()}</span></div>
+      <div class="metric"><span>PITI</span><span>$${Math.round(t.piti).toLocaleString()}</span></div>
+      <div class="metric"><span>DSCR</span><span>${t.dscr.toFixed(2)}</span></div>
+      <div class="metric"><span>Monthly cash flow</span><span>$${Math.round(t.monthly_cash_flow).toLocaleString()}</span></div>
+      <div class="metric"><span>Cash to close</span><span>$${Math.round(t.cash_to_close).toLocaleString()}</span></div>
+      <div class="metric"><span>Cash-on-cash</span><span>${t.cash_on_cash_pct.toFixed(1)}%</span></div>
+      <div class="metric"><span>Reserves required</span><span>$${Math.round(t.reserves_required).toLocaleString()}</span></div>
+      <div class="reasons">${t.reasons.join(" &middot; ")}</div>
+    </div>
+  `).join("");
+}
+
+function currentAssumptions() {
+  return {
+    rate_pct: parseFloat(document.getElementById("a-rate_pct").value),
+    loan_years: parseInt(document.getElementById("a-loan_years").value),
+    closing_cost_pct: parseFloat(document.getElementById("a-closing_cost_pct").value),
+    reserve_months: parseFloat(document.getElementById("a-reserve_months").value),
+    vacancy_pct: parseFloat(document.getElementById("a-vacancy_pct").value),
+    maintenance_pct: parseFloat(document.getElementById("a-maintenance_pct").value),
+    capex_pct: parseFloat(document.getElementById("a-capex_pct").value),
+    mgmt_pct: parseFloat(document.getElementById("a-mgmt_pct").value),
+  };
+}
+
+async function liveRecompute() {
+  if (!currentDealId) return;
+  const assumptions = currentAssumptions();
+  const tiers = await Promise.all([15, 20, 25].map(down_pct =>
+    fetch(`/api/deals/${currentDealId}/recompute`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({down_pct, ...assumptions})
+    }).then(r => r.json())
+  ));
+  renderTiers(tiers);
+}
+
+document.querySelectorAll(".assumptions input").forEach(el => {
+  el.oninput = () => {
+    clearTimeout(recomputeTimer);
+    recomputeTimer = setTimeout(liveRecompute, 300);
+  };
+});
+
+document.getElementById("btn-fulton-lookup").onclick = async () => {
+  const el = document.getElementById("fulton-result");
+  el.textContent = "Looking up...";
+  try {
+    const res = await fetch(`/api/deals/${currentDealId}/fulton-lookup`, {method: "POST"});
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    renderFultonResult(data.deal.fulton_county_lookup);
+  } catch (e) {
+    el.innerHTML = `<div class="error">Lookup failed: ${e.message}</div>`;
+  }
+};
+
+function renderFultonResult(lookup) {
+  const el = document.getElementById("fulton-result");
+  const a = lookup.assessor || {}, t = lookup.delinquent_tax || {};
+  el.innerHTML = `
+    <p><strong>Assessor:</strong> assessed value ${a.assessed_value ? "$" + Number(a.assessed_value).toLocaleString() : "n/a"},
+    parcel ${a.parcel_id || "n/a"} ${a.error ? `<span class="error">(${a.error})</span>` : ""}</p>
+    <p><strong>Delinquent tax:</strong> ${t.delinquent === true ? "YES" : t.delinquent === false ? "no" : "n/a"},
+    amount owed ${t.amount_owed ? "$" + Number(t.amount_owed).toLocaleString() : "n/a"} ${t.error ? `<span class="error">(${t.error})</span>` : ""}</p>
+    <p class="muted">Best-effort parse — verify against the raw source before relying on it.</p>
+    ${a.raw_snippet ? `<pre class="raw-snippet">${a.raw_snippet.replace(/</g, "&lt;")}</pre>` : ""}
+  `;
+}
+
+document.getElementById("btn-push-hubspot").onclick = async () => {
+  const el = document.getElementById("hubspot-result");
+  el.textContent = "Pushing...";
+  try {
+    const res = await fetch(`/api/deals/${currentDealId}/push-hubspot`, {method: "POST"});
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const data = await res.json();
+    el.innerHTML = `<div class="success">Synced — HubSpot deal ID ${data.deal.hubspot_deal_id}</div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="error">Push failed: ${e.message}</div>`;
+  }
+};
+
+document.getElementById("btn-save-detail").onclick = async () => {
+  const statusEl = document.getElementById("detail-save-status");
+  try {
+    const res = await fetch(`/api/deals/${currentDealId}`, {
+      method: "PATCH", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        pipeline_stage: document.getElementById("d-pipeline_stage").value,
+        condition_notes: document.getElementById("d-condition_notes").value,
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    statusEl.innerHTML = `<div class="success">Saved.</div>`;
+  } catch (e) {
+    statusEl.innerHTML = `<div class="error">Save failed: ${e.message}</div>`;
+  }
+};
+
+loadPipeline();
+</script>
