@@ -1,0 +1,8 @@
+# The repo root ignores *.html globally (it's used for generated map
+# outputs elsewhere in this repo) — un-ignore our actual frontend source.
+!static/index.html
+
+.env
+*.db
+pmms_rate_cache.json
+venv/
